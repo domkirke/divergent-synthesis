@@ -1,0 +1,12 @@
+type: ConvEncoder
+args:
+  layer: DownsamplingConvBlock
+  channels: [64,64,64,64]
+  kernel_size: [5,5,5]
+  nn_lin: LeakyReLU
+  norm: pixel
+  bias: False
+  block_args:
+    downsample: 2
+    n_convs_per_block: 1
+  target_shape: 1

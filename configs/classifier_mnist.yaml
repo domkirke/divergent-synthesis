@@ -1,0 +1,42 @@
+name: ???
+rundir: "${dir:runtime}/saves/${name}"
+
+hydra:
+  job:
+    name: "${name}"
+  run:
+    dir: "${rundir}/${name}"
+  sweep:
+    dir: "${dir:runtime}/saves/${name}"
+    subdir: "${base:${data.dataset.root}}"
+
+defaults:
+  - data:
+    - defaults
+    - dataset/mnist
+  - callbacks: img_defaults
+  - _self_
+
+data:
+  loader:
+    batch_size: 256
+    shuffle: True
+
+model:
+  type: Classifier
+  classifiers:
+    class:
+      type: MLPEncoder
+      dim: 10
+      args:
+        nlayers: 2
+        hidden_dims: 100
+        target_dist: Categorical 
+  training: 
+    classification:
+      type: LogDensity 
+
+pl_trainer:
+  max_epochs: 500
+  limit_train_batches: 1
+  limit_val_batches: 1

@@ -1,0 +1,7 @@
+type: ConvEncoder
+args:
+  channels: [128,256,512,1024]
+  kernel_size: [5,5,5]
+  stride: 2
+  norm: batch
+  nnlin: LeakyReLU

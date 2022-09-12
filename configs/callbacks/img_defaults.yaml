@@ -1,0 +1,6 @@
+- { type: LearningRateMonitor, args: {logging_interval: "epoch"} }
+- { type: ModelSummary, args: {max_depth: 1} }
+- { type: ModelCheckpoint, args: {dirpath: "${hydra:run.dir}", filename: "${hydra:job.name}", every_n_epochs: 1, save_last: True, epoch_schedule: [0, 1, 2, 3, 5, 10, 15, 20, 25, 30, 35, 40, 50]} }
+- { type: DissectionMonitor, args: {monitor_epochs: 10, embedding_epochs: 10, n_batches: 5, batch_size: 512} }
+- { type: ClassificationMonitor, args: {monitor_epochs: 1, n_batches: 5, batch_size: 512} }
+- { type: ImgReconstructionMonitor }

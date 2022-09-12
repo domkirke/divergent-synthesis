@@ -1,0 +1,3 @@
+module: MNISTDataModule
+binary: 0
+polarity: bipolar

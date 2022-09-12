@@ -1,0 +1,45 @@
+name: ???
+rundir: "${dir:runtime}/saves/${name}"
+
+hydra:
+  job:
+    name: "${name}"
+  run:
+    dir: "${rundir}/${name}"
+  sweep:
+    dir: "${dir:runtime}/saves/${name}"
+    subdir: "${base:${data.dataset.root}}"
+
+defaults:
+  - data:
+    - defaults
+    - dataset/mnist
+  - model: vae
+  - callbacks: img_defaults
+  - _self_
+
+data:
+  loader:
+    batch_size: 256
+    shuffle: True
+
+# here we add specific parameters for the decoder's output (softplus + normal distribution).
+model:
+  latent:
+    dist: Normal
+    dim: 8
+  decoder:
+    args:
+      out_nnlin: Softplus
+      target_dist: Normal
+  training: 
+    beta: 0.1
+    beta_schedule_type: batch
+    reconstruction:
+      type: MSE
+    warmup: 50000
+
+pl_trainer:
+  max_epochs: 500
+  # limit_train_batches: 1
+  # limit_val_batches: 1

@@ -1,0 +1,37 @@
+name: ???
+rundir: "${dir:runtime}/saves/${name}"
+
+hydra:
+  job:
+    name: "${name}"
+  run:
+    dir: "${rundir}"
+  sweep:
+    dir: "${dir:runtime}/saves/${name}"
+    subdir: "${base:${data.dataset.root}}"
+
+defaults:
+  - data:
+    - defaults
+    - dataset/mnist
+  - model: gan
+  - callbacks: img_defaults
+  - _self_
+
+data:
+  loader:
+    batch_size: 256
+
+model:
+  latent:
+    dist: Normal
+    dim: 16
+  generator:
+    args:
+      out_nnlin: Tanh
+
+pl_trainer:
+  max_epochs: 100000
+  limit_train_batches: 1
+  limit_val_batches: 1
+

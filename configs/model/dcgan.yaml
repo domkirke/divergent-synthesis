@@ -1,0 +1,17 @@
+defaults:
+  - _self_
+  - generator/adv_dcgan
+  - discriminator/adv_dcgan
+
+type: GAN
+generator:
+  args:
+    reshape_method: channel
+discriminator:
+  args:
+    reshape_method: flatten
+    flatten_args:
+      nlayers: 0
+latent:
+  dist: Normal
+  dim: 128

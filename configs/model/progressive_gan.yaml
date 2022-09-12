@@ -1,0 +1,15 @@
+defaults:
+  - generator/adv_upsample_conv
+  - discriminator/adv_downsample_conv
+
+type: ProgressiveGAN
+latent:
+  dist: Normal
+  dim: 128
+generator:
+  args:
+    mode: forward+
+discriminator:
+  args:
+    mode: forward+
+

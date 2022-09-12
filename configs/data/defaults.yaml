@@ -1,0 +1,6 @@
+defaults:
+  - dataset:
+  - transforms:
+  - _self_
+
+module: ${data.dataset.module}
