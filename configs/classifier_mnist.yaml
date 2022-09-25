@@ -14,10 +14,12 @@ defaults:
   - data:
     - defaults
     - dataset/mnist
-  - callbacks: img_defaults
   - _self_
 
 data:
+  module: ClassifMNISTDataModule
+  binary: 1
+  polarity: unipolar 
   loader:
     batch_size: 256
     shuffle: True
@@ -26,17 +28,26 @@ model:
   type: Classifier
   classifiers:
     class:
-      type: MLPEncoder
+      type: ConvEncoder
       dim: 10
       args:
-        nlayers: 2
-        hidden_dims: 100
+        channels: [64,32,16,8]
+        kernel_size: [3, 5, 7, 7]
+        stride: [1, 1, 2, 2]
+        nn_lin: ELU 
         target_dist: Categorical 
   training: 
     classification:
       type: LogDensity 
 
+callbacks:
+  - { type: LearningRateMonitor, args: {logging_interval: "epoch"} }
+  - { type: ModelSummary, args: {max_depth: 1} }
+  - { type: ModelCheckpoint, args: {dirpath: "${hydra:run.dir}", filename: "${hydra:job.name}", every_n_epochs: 1, save_last: True, epoch_schedule: [0, 1, 2, 3, 5, 10, 15, 20, 25, 30, 35, 40, 50]} }
+  - { type: DissectionMonitor, args: {monitor_epochs: 10, embedding_epochs: 10, n_batches: 5, batch_size: 512} }
+  - { type: ClassificationMonitor, args: {monitor_epochs: 1, n_batches: 5, batch_size: 512} }
+
 pl_trainer:
-  max_epochs: 500
-  limit_train_batches: 1
-  limit_val_batches: 1
+  max_epochs: 5000
+  # limit_train_batches: 1
+  # limit_val_batches: 1

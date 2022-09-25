@@ -7,6 +7,15 @@ from pytorch_lightning.callbacks import Callback
 from pytorch_lightning.trainer.states import RunningStage, TrainerFn, TrainerState, TrainerStatus
 from torchmetrics import ConfusionMatrix
 
+def _recursive_to(obj, device):
+    if isinstance(obj, dict):
+        return {k: _recursive_to(v, device) for k, v in obj.items()}
+    elif isinstance(obj, (list, tuple)):
+        return [_recursive_to(o, device) for o in obj]
+    elif torch.is_tensor(obj):
+        return obj.to(device=device)
+    else:
+        raise TypeError('type %s not handled by _recursive_to'%type(obj))
 
 def render_confusion_matrix(ax, cm, classes, normalize=False, title='Confusion matrix', cmap=plt.cm.Blues):
     if normalize:
@@ -49,9 +58,11 @@ class ClassificationMonitor(Callback):
 
     def get_confusion_matrices(self, pl_module, loader):
         confusion_matrices = {}
+        device = next(pl_module.parameters()).device
         for task, task_config in pl_module.config.classifiers.items():
-            confusion_matrices[task] = ConfusionMatrix(num_classes=task_config['dim'])
+            confusion_matrices[task] = ConfusionMatrix(num_classes=task_config['dim']).to(device)
         for i, data in enumerate(loader):
+            data = _recursive_to(data, device)
             x, y = data 
             out = pl_module.classify(x, y)
             for task, prediction in out.items():
@@ -59,7 +70,7 @@ class ClassificationMonitor(Callback):
                     prediction = prediction.sample()
                 confusion_matrices[task].update(prediction, y[task])
         for task, cm in confusion_matrices.items():
-            confusion_matrices[task] = cm.compute()
+            confusion_matrices[task] = cm.compute().cpu()
         return confusion_matrices
 
     def on_validation_epoch_end(self, trainer: pl.Trainer, pl_module: pl.LightningModule):

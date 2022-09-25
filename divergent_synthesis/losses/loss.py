@@ -56,7 +56,22 @@ class LossContainer(Loss):
         super(LossContainer, self).__init__(**kwargs)
         assert criterions is not None, '"criterions" keyword is required for LossContainer'
         self._criterions = criterions
+        if hasattr(weight, "__len__"):
+            assert len(weight) == len(criterions), "got %s weights for %s criteria"%(len(weight), len(criterions))
         self._weight = checklist(weight, n=len(self._criterions))
+    
+    def __repr__(self):
+        label = "LossContainer(\n"
+        for i in range(len(self)):
+            label += "\t%.2f"%self._weight[i] + "*" + self._criterions[i].__repr__()+"\n"
+        label += ")"
+        return label
+
+    def __len__(self):
+        return len(self._criterions)
+
+    def __getitem__(self, idx):
+        return self._criterions[idx], self._weight[idx]
 
     def _append_losses(self, full_dict: dict, new_dict: dict) -> dict:
         full_dict = dict(full_dict)
@@ -97,10 +112,10 @@ class LossContainer(Loss):
             c.reset()
 
     def __add__(self, other):
-        if isinstance(other, Loss):
-            return LossContainer(criterions=self._criterions+[other], weight=self._weight +[1.0])
-        elif isinstance(other, LossContainer):
+        if isinstance(other, LossContainer):
             return LossContainer(criterions=self._criterions + other._criterions, weight= self._weight + other._weight)
+        elif isinstance(other, Loss):
+            return LossContainer(criterions=self._criterions+[other], weight=self._weight +[1.0])
         else:
             raise TypeError
 

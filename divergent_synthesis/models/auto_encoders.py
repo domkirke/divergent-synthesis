@@ -2,8 +2,8 @@ import numpy as np, torch, torch.nn as nn, torch.nn.functional as F, sys, pdb, r
 sys.path.append('../')
 from sklearn import decomposition 
 from omegaconf import OmegaConf, ListConfig
+from acids_transforms import OneHot
 from divergent_synthesis.models.model import Model, ConfigType
-from divergent_synthesis.models.gans import GAN, parse_additional_losses
 from divergent_synthesis.modules import encoders
 from torch import distributions as dist
 from divergent_synthesis.utils import checklist, trace_distribution, reshape_batch, flatten_batch
@@ -166,8 +166,8 @@ class AutoEncoder(Model):
         # in lightning, forward defines the prediction/inference actions
         return self.encode(x, *args, **kwargs)
 
-    def encode(self, x: torch.Tensor) -> torch.Tensor:
-        return self.encoder(x)
+    def encode(self, x: torch.Tensor, y = None, trace = None) -> torch.Tensor:
+        return self.encoder(x, y=y, trace=None)
 
     def sample(self, z_params: Union[dist.Distribution, torch.Tensor]) -> torch.Tensor:
         """Samples a latent distribution."""
@@ -177,9 +177,9 @@ class AutoEncoder(Model):
             z = z_params
         return z
 
-    def decode(self, z: torch.Tensor):
+    def decode(self, z: torch.Tensor, y=None, trace=None):
         """Decode an incoming tensor."""
-        return self.decoder(z)
+        return self.decoder(z, y=y, trace=None)
 
     def predict(self, z: torch.Tensor, y: Dict[str, torch.Tensor] = None):
         if not hasattr(self, "prediction_modules"):
@@ -375,129 +375,11 @@ class AutoEncoder(Model):
             decoder_input = self.get_decoder_input(z, y)
             x = self.decode(decoder_input)
             if sample:
-                x = x.sample()
+                if x.has_rsample():
+                    x = x.rsample()
+                else:
+                    x = x.sample()
             else:
                 x = x.mean
             generations.append(x)
         return torch.stack(generations, 1)
-
-    def get_scripted(self, mode: str = "audio", script: bool=True, **kwargs):
-        if mode == "audio":
-            scriptable_model = ScriptableAudioAutoEncoder(self, **kwargs)
-        else:
-            raise ValueError("error while scripting model %s : mode %s not found"%(type(self), mode))
-        if script:
-            return torch.jit.script(scriptable_model)
-        else:
-            return scriptable_model
-
-
-
-class InfoGAN(GAN):
-    def __init__(self, config=None, encoder=None, decoder=None, discriminator=None, training=None, latent=None, **kwargs) -> None:
-        super(GAN, self).__init__()
-        if isinstance(config, dict):
-            config = OmegaConf(config)
-        else:
-            config = OmegaConf.create()
-
-        input_shape = config.get('input_shape') or kwargs.get('input_shape')
-        # setup latent
-        config.latent = config.get('latent') or latent or {}
-        self.prior = getattr(priors, config.latent.get('prior', "isotropic_gaussian"))
-       # latent configs
-        config.latent = config.get('latent') or latent
-        self.latent = config.latent
-        # encoder architecture
-        config.encoder = config.get('encoder') or encoder
-        config.encoder.args = config.encoder.get('args', {})
-        if config.encoder['args'].get('input_shape') is None:
-            config.encoder['args']['input_shape'] = config.get('input_shape') or kwargs.get('input_shape')
-        if config.encoder['args'].get('target_shape') is None:
-            config.encoder['args']['target_shape'] = config.latent.dim
-        config.encoder['args']['target_dist'] = config.latent.dist
-        encoder_type = config.encoder.type or "MLPEncoder"
-        self.encoder = getattr(encoders, encoder_type)(config.encoder.args)
-        # decoder architecture
-        config.decoder = config.get('decoder', decoder)
-        config.decoder.args = config.decoder.get('args', {})
-        config.decoder.args.input_shape = config.latent.dim
-        if config.decoder.args.get('input_shape') is None:
-            config.decoder.args.input_shape = config.latent.dim
-        if config.decoder.args.get('target_shape') is None:
-            config.decoder.args.target_shape = config.get('input_shape') or kwargs.get('input_shape')
-        decoder_type = config.decoder.type or "MLPDecoder"
-        self.decoder = getattr(encoders, decoder_type)(config.decoder.args) 
-        # setup discriminator
-        config.discriminator = config.get('discriminator') or discriminator 
-        config.discriminator.args.input_shape = input_shape
-        self.init_discriminator(config.discriminator)
-        # setup training
-        config.training = config.get('training') or training
-        config.training.mode = config.training.get('mode', 'adv')
-        assert config.training.mode in self.gan_modes
-        self.automatic_optimization = False
-        self.reconstruction_losses = parse_additional_losses(config.training.get('rec_losses'))
-        reg_config = config.training.get('regularization_loss', OmegaConf.create())
-        self.regularization_loss = getattr(regularization, reg_config.get('type', "KLD"))(**reg_config.get('args',{}))
-        self.prior = getattr(priors, config.training.get('prior', "isotropic_gaussian"))
-
-        self.config = config
-        self.save_hyperparameters(dict(self.config))
-        self.__dict__['generator'] = self.decoder
-
-    def get_parameters(self, parameters=None, model=None, prefix=None):
-        model = model or self
-        if parameters is None:
-            params = list(model.parameters())
-        else:
-            full_params = dict(model.named_parameters())
-            full_params_names = list(full_params.keys())
-            full_params_names_prefix = full_params_names if prefix is None else [f"{prefix}.{n}" for n in full_params_names]
-            params = []
-            for param_regex in parameters:
-                valid_names = list(filter(lambda x: re.match(param_regex, full_params_names_prefix[x]), range(len(full_params_names))))
-                params.extend([full_params[full_params_names[i]] for i in valid_names])
-        return params
-
-
-    def configure_optimizers(self):
-        gen_p = self.get_parameters(self.config.get('optim_params'), self.encoder, "encoder")
-        gen_p += self.get_parameters(self.config.get('optim_params'), self.decoder, "decoder")
-        dis_p = self.get_parameters(self.config.get('optim_params'), self.discriminator, "discriminator")
-        if len(gen_p) == 0:
-            dis_opt = torch.optim.Adam(dis_p, 1e-4, (.5, .9))
-            return dis_opt
-        elif len(dis_p) == 0:
-            gen_opt = torch.optim.Adam(gen_p, 1e-4, (.5, .9))
-            return gen_opt
-        else:
-            dis_opt = torch.optim.Adam(dis_p, 1e-4, (.5, .9))
-            gen_opt = torch.optim.Adam(gen_p, 1e-4, (.5, .9))
-            return gen_opt, dis_opt    
-
-    def encode(self, x):
-        return self.encoder(x)
-
-    def sample_prior(self, batch=None, shape=None):
-        if batch is None:
-            return super().sample_prior(batch=batch, shape=shape)
-        else:
-            z = self.encode(batch)
-            return z
-
-    def generate(self, x=None, z=None, sample=True, **kwargs):
-        if isinstance(z, dist.Distribution):
-            z = z.rsample()
-        out = self.decoder(z, **kwargs)
-        return out
-
-    def generator_loss(self, generator, batch, out, d_fake, z_params, hidden=None, **kwargs):
-        adv_loss = super().generator_loss(generator, batch, out, d_fake, z_params, hidden=hidden)
-        z = z_params.sample()
-        prior = self.prior(z.shape, device=batch.device)
-        reg_loss = self.regularization_loss(prior, z_params)
-        beta = self.config.training.beta if self.config.training.beta is not None else 1.0
-        if self.config.training.warmup:
-            beta = min(int(self.trainer.current_epoch) / self.config.training.warmup, beta)
-        return adv_loss + beta * reg_loss

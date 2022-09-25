@@ -14,30 +14,62 @@ defaults:
   - data:
     - defaults
     - dataset/mnist
-  - model: vae
   - callbacks: img_defaults
   - _self_
 
 data:
+  dataset:
+    binary: 1
+    polarity: unipolar
   loader:
     batch_size: 256
     shuffle: True
+    # num_workers: 0
 
 # here we add specific parameters for the decoder's output (softplus + normal distribution).
 model:
+  type: AutoEncoder
+
   latent:
     dist: Normal
-    dim: 8
-  decoder:
+    dim: 16
+
+  encoder:
+    type: ConvEncoder
     args:
-      out_nnlin: Softplus
-      target_dist: Normal
+      channels: [64,32,32,16]
+      dilation: [1,1,1,1]
+      stride: [1,2,2,4]
+      kernel_size: [3,5,7,9]
+      nnlin: ELU
+      bias: True
+      norm: batch
+
+  decoder: 
+    type: DeconvEncoder
+    args:
+      layer: DeconvLayer
+      nnlin: ELU
+      channels: [16,32,32,64]
+      dilation: [1,1,1,1]
+      stride: [4,2,2,1]
+      kernel_size: [9,7,5,3]
+      final_conv: 0
+      target_dist: Bernoulli 
+      bias: True 
+
   training: 
-    beta: 0.1
+    beta: 1.0
     beta_schedule_type: batch
+    warmup: 10000
     reconstruction:
-      type: MSE
-    warmup: 50000
+      type: LogDensity
+    regularization:
+      type: KLD
+    optimizer:
+      type: Adam
+      args:
+        lr: 1.e-4
 
 pl_trainer:
   max_epochs: 500

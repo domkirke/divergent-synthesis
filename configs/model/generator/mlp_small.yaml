@@ -1,5 +1,0 @@
-type: MLPEncoder
-args:
-  dims: [512, 256]
-  nnlin: ReLU
-  norm: batch

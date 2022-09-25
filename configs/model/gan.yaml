@@ -1,9 +1,0 @@
-defaults:
-  - generator/mlp_small
-  - discriminator/adv_mlp_small
-  - training/gan_adv
-
-type: GAN
-latent:
-  dist: Normal
-  dim: 16

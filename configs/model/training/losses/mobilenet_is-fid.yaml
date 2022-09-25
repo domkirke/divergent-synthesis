@@ -1,0 +1,1 @@
+- {type: BAD, args: {model: efficientnet_b3, splits: 1, weights: [1.0, 1.0], couple: is/fid, mode: sum, tasks: {'class': {'dim': 10}}}}

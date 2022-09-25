@@ -7,9 +7,11 @@ scipy>=1.7
 scikit_learn>=1.0
 torch>=1.10
 av>=9.2
+lpips
 torchvision
 torchaudio
 pytorch_lightning>=1.5
+torchmetrics
 omegaconf
 hydra-core==1.2
 tensorboard

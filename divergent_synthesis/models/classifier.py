@@ -3,14 +3,10 @@ import numpy as np, torch, torch.nn as nn, torch.nn.functional as F, sys, pdb, r
 from divergent_synthesis.losses.loss import LossContainer
 sys.path.append('../')
 from omegaconf import OmegaConf, ListConfig
-from divergent_synthesis.models.model import Model, ConfigType
-from divergent_synthesis.models.gans import GAN, parse_additional_losses
+from divergent_synthesis.models.model import Model
 from divergent_synthesis.modules import encoders
 from torch import distributions as dist
-from divergent_synthesis.utils import checklist, trace_distribution, reshape_batch, flatten_batch
-from divergent_synthesis.utils.misc import _recursive_to
 from divergent_synthesis import losses 
-from typing import Dict, Union, Tuple, Callable
 
 
 class Classifier(Model):

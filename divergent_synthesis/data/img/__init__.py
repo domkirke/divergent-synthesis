@@ -1,1 +1,1 @@
-from .mnist import MNISTDataModule
+from .mnist import MNISTDataModule, ClassifMNISTDataModule

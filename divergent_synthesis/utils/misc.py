@@ -1,5 +1,5 @@
 import omegaconf
-import numpy as np, os, torch, sys, copy, bisect
+import numpy as np, os, torch, sys, copy, bisect, re
 import torch.distributions as dist
 from typing import List, Union, Tuple
 sys.path.append('../')
@@ -128,7 +128,7 @@ def print_module_grads(module):
         if v is None:
             print(f'{k}: None')
         else:
-            print_stats(k, v.grad)
+            print_stats(k, v)
 
 def trace_distribution(distribution, name="", scatter_dim=False):
     if name != "":
@@ -403,3 +403,22 @@ def _recursive_to(obj, device):
         return obj.to(device=device)
     else:
         raise TypeError('type %s not handled by _recursive_to'%type(obj))
+
+def get_root_dir(dirpath, name):
+    dirpath = os.path.join(dirpath, name)
+    if not os.path.isdir(dirpath):
+        os.makedirs(f"{dirpath}")
+    folder_list = list(filter(lambda x: os.path.isdir(os.path.join(dirpath, x)), os.listdir(dirpath)))
+    folder_list = list(filter(lambda x: re.match("version_(\d)+", x) is not None, folder_list))
+    if len(folder_list) == 0:
+        dirpath = f"{dirpath}/version_1"
+        if not os.path.isdir(dirpath):
+            os.makedirs(dirpath)
+        return dirpath
+    else:
+        versions = list(map(lambda x: int(re.match("version_(\d+)", x).groups()[0]), folder_list))
+        current_version = max(versions) + 1
+        dirpath = f"{dirpath}/version_{current_version}"
+        if not os.path.isdir(dirpath):
+            os.makedirs(dirpath)
+        return dirpath

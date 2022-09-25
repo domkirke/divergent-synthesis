@@ -1,5 +1,4 @@
 from . import img
-from .video import VideoDataset, VideoDataModule
-from .img import MNISTDataModule
+from .img import *
 
-modules = [VideoDataModule, MNISTDataModule]
+modules = [MNISTDataModule, ClassifMNISTDataModule]

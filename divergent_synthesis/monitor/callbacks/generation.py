@@ -30,7 +30,7 @@ def fit_data(data, target_shape, has_batch = True):
 class ImgReconstructionMonitor(Callback):
 
     def __init__(self, n_reconstructions: int = 5, n_morphings: int = 2, n_samples = 5,
-                 temperature_range=None, monitor_epochs=1):
+                 temperature_range=None, monitor_epochs=1, logdir=None):
         """
         Callback for image reconstruction monitoring.
         Args:
@@ -42,27 +42,33 @@ class ImgReconstructionMonitor(Callback):
             reconstruction_epochs: rec
         """
         self.n_reconstructions = n_reconstructions
-        self.temperature_range = temperature_range or [0.1, 1.0, 3.0, 5.0, 10.0]
+        self.temperature_range = temperature_range or [0.1, 0.5, 0.7, 1.0, 1.2, 1.5, 1.8, 2.0, 3.0] 
         self.n_samples = n_samples
         self.monitor_epochs = monitor_epochs
+        self.logdir = logdir
+        if self.logdir is not None:
+            self.sample_logdir = os.path.join(logdir, "samples")
+            checkdir(self.sample_logdir)
 
     def plot_reconstructions(self, model, loader):
         data = next(loader(batch_size=self.n_reconstructions).__iter__())
         x_original, x_out = model.reconstruct(data)
+        if isinstance(x_original, (list, tuple)):
+            x_original, _ = x_original
+        x_out = x_out.cpu()
         value_range = [x_original.min(), x_original.max()]
-        x_out = [x_tmp.cpu() for x_tmp in x_out]
-        out = torch.stack([x_original, *x_out], 0).reshape((len(x_out) + 1) * x_original.shape[0], *x_original.shape[1:])
+        out = torch.cat([x_original, x_out], 0)
         return tv.utils.make_grid(out, nrow=x_original.shape[0], value_range=value_range)
 
     def plot_samples(self, model, datamodule):
         out = model.sample_from_prior(n_samples=self.n_samples, temperature=self.temperature_range)
         if isinstance(out, dist.Distribution):
             out = out.mean
-        #out = out.transpose(0, 1)
+        # out = out.transpose(0, 1)
         out = out.reshape(out.size(0) * out.size(1), *out.shape[2:])
         if hasattr(datamodule.transforms, "invert"):
             out = datamodule.transforms.invert(out)
-        full_img = tv.utils.make_grid(out, nrow=self.n_samples, value_range=[0, 1]) 
+        full_img = tv.utils.make_grid(out, nrow=len(self.temperature_range), value_range=[0, 1]) 
         return full_img
 
     def reconstruct_file(self, model, files, dataset):
@@ -74,6 +80,11 @@ class ImgReconstructionMonitor(Callback):
             generations.append(dataset.invert_transform(generation))
         originals, generations = torch.cat(originals, -1).squeeze(), torch.cat(generations, -1).squeeze()
         return check_mono(originals, normalize=True), check_mono(generations, normalize=True)
+
+    def save_sample_images(self, samples, epoch):
+        if self.logdir is None:
+            return
+        tv.utils.save_image(samples, os.path.join(self.sample_logdir, "prior_%05d.png"%epoch))
 
     def on_validation_epoch_end(self, trainer: pl.Trainer, pl_module: pl.LightningModule):
         with torch.no_grad():
@@ -96,4 +107,5 @@ class ImgReconstructionMonitor(Callback):
             if hasattr(model, 'sample_from_prior'):
                 samples = self.plot_samples(model, trainer.datamodule)
                 trainer.logger.experiment.add_image('samples', samples, trainer.current_epoch)
+                self.save_sample_images(samples, epoch=trainer.current_epoch)
 

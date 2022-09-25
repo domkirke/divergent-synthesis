@@ -1,3 +1,4 @@
+from hmac import trans_36
 import torch, torch.nn as nn, torch.distributions as dist
 from typing import Union
 
@@ -31,8 +32,10 @@ class MLPBernoulli(nn.Module):
 
     def forward(self, out: torch.Tensor) -> dist.Bernoulli:
         if self.out_nnlin is not None:
-            out = self.out_nnlin(out)
-        return dist.Bernoulli(out)
+            transformed_out = self.out_nnlin(out)
+            return dist.Bernoulli(transformed_out)
+        else:
+            return dist.Bernoulli(out)
 
 class ConvBernoulli(MLPBernoulli):
     def __init__(self, out_nnlin: Union[nn.Module, None] = None, dim: int = None):

@@ -1,0 +1,52 @@
+name: inception_mmd
+rundir: "${dir:runtime}/saves/${name}"
+
+hydra:
+  job:
+    name: "${name}"
+  run:
+    dir: "${rundir}"
+  sweep:
+    dir: "${dir:runtime}/saves/${name}"
+    subdir: "${base:${data.dataset.root}}"
+
+defaults:
+  - data:
+    - defaults
+  - _self_
+
+callbacks:
+- { type: LearningRateMonitor, args: {logging_interval: "epoch"} }
+- { type: ModelSummary, args: {max_depth: 1} }
+- { type: ModelCheckpoint, args: {dirpath: "${hydra:run.dir}", filename: "${hydra:job.name}", every_n_epochs: 1, save_last: True, epoch_schedule: [0, 1, 2, 3, 5, 10, 15, 20, 25, 30, 35, 40, 50]} }
+- { type: DissectionMonitor, args: {monitor_epochs: 10, embedding_epochs: 10, n_batches: 5, batch_size: 512} }
+- { type: EvaluationCallback, args: {model_path: /data/axel/neurips2022/vae_mnist/version_2/last.ckpt, feature_path: /data/axel/neurips2022/mnist_classifier/version_1, n_batches: 2, batch_size: 64, logdir: "results/${hydra:job.name}"}}
+- { type: ImgReconstructionMonitor, args: {logdir: "results/${hydra:job.name}"}}
+
+data:
+  dataset: 
+    module: MNISTDataModule
+    binary: 1
+    polarity: unipolar
+  loader:
+    shuffle: True
+    batch_size: 128
+
+model: 
+  type: DivergentGenerative
+  generator:
+    path: /data/axel/neurips2022/vae_mnist/version_2/last.ckpt
+  training:
+    losses:
+      - {type: BAD, args: {model: inception_v3, splits: 1, weights: [-1.0, 5.0], couple: mmd, mode: sum, tasks: {'class': {'dim': 10}}}}
+    optimizer:
+      params: ["generator.decoder*"]
+      type: Adam
+      args:
+        lr: 5.e-6
+
+pl_trainer:
+  max_epochs: 200
+  limit_train_batches: 20
+  limit_val_batches: 20
+  log_every_n_steps: 1

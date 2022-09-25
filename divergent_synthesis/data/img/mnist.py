@@ -12,11 +12,11 @@ class MNIST(datasets.MNIST):
 
 
 class MNISTDataModule(LightningDataModule):
-    def __init__(self, config, **kwargs):
+    def __init__(self, config={}, **kwargs):
         super().__init__()
-        self.data_args = config.dataset
-        self.polarity = config.dataset.get('polarity', 'unipolar')
-        self.loader_args = dict(config.loader)
+        self.data_args = config.get('dataset', {})
+        self.polarity = self.data_args.get('polarity', 'unipolar')
+        self.loader_args = dict(config.get('loader', {'batch_size': 64}))
 
     @property
     def shape(self):
@@ -54,6 +54,7 @@ class MNISTDataModule(LightningDataModule):
 
     def val_dataloader(self, **kwargs):
         loader_args = {**self.loader_args, **kwargs}
+        loader_args['shuffle'] = False
         loader_val = DataLoader(self.validation_dataset(), **loader_args)
         return loader_val
 
@@ -61,6 +62,7 @@ class MNISTDataModule(LightningDataModule):
         if self.test_dataset is None:
             return None
         loader_args = {**self.loader_args, **kwargs}
+        loader_args['shuffle'] = False
         loader_test = DataLoader(self.test_dataset(), **loader_args)
         return loader_test
 
@@ -71,3 +73,27 @@ class MNISTDataModule(LightningDataModule):
         return self.mnist_val
     def test_dataset(self, **kwargs):
         return self.mnist_test
+
+
+class ClassifMNISTDataModule(MNISTDataModule):
+    def setup(self, stage=None):
+                # transforms
+        transform = [
+            transforms.ToTensor(),
+            transforms.RandomApply([
+                transforms.RandomAffine(30, translate=(0.2, 0.2), scale=(0.3, 0.3), shear=None, resample=0, fillcolor=0),
+                transforms.GaussianBlur(3, sigma=(0.1, 2.0)),
+                transforms.RandomErasing()
+            ]),
+        ]
+        if self.data_args.get('resize'):
+            transform.insert(1, transforms.Resize(tuple(self.data_args.resize)))
+        if self.data_args.binary:
+            transform.append(Binarize())
+        transform.append(Rescale(mode = self.polarity))
+        transform = Compose(transform)
+        # split dataset
+        mnist_train = MNIST(os.getcwd(), train=True, transform=transform)
+        self.mnist_train, self.mnist_val = random_split(mnist_train, [55000, 5000])
+        self.mnist_test = MNIST(os.getcwd(), train=False, transform=transform)
+        self.transforms = transform

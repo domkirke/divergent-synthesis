@@ -1,7 +1,0 @@
-type: MLPEncoder
-args:
-  dims: [512,256]
-  dropout: 0.2
-  norm: batch
-  nnlin: LeakyReLU
-  out_nnlin: Sigmoid

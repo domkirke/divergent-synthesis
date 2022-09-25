@@ -1,6 +1,7 @@
 import sys, torch, torch.nn as nn, torch.distributions as dist
 sys.path.append('../')
 from divergent_synthesis.losses.loss import Loss
+from torch.distributions import Distribution
 from typing import Callable, Union
 
 
@@ -28,12 +29,10 @@ class KLD(Loss):
         else:
             return ld
 
-
-def l2_kernel(x, y, scale=None):
+def l2_kernel(x, y, scale=1.0):
     x_size = x.size(0)
     y_size = y.size(0)
     dim = x.size(1)
-    scale = scale or dim
     loss = torch.exp(-(x.unsqueeze(1).expand(x_size, y_size, dim) - y.unsqueeze(0).expand(x_size, y_size, dim)).pow(2) / float(scale))
     return loss
 
@@ -50,7 +49,7 @@ class MMD(Loss):
     def __repr__(self):
         return "MMD(kernel=%s)"%self.kernel
 
-    def __init__(self, kernel: Union[Callable, str] = l2_kernel, *args, reduction: bool = None, **kwargs):
+    def __init__(self, kernel: Union[Callable, str] = l2_kernel, *args, reduction: bool = None, kernel_args={}, **kwargs):
         """
         Maximum Mean Discrepency (MMD) performs global distribution matching, in order to regularize q(z) rather that
         q(z|x). Used in Wasserstein Auto-Encoders.
@@ -62,23 +61,23 @@ class MMD(Loss):
             assert kernel in kernel_hash.keys(), "kernel keyword must be %s"%list(kernel_hash.keys())
             kernel = kernel_hash[kernel]
         self.kernel = kernel
+        self.kernel_args = kernel_args
 
-    def forward(self, params1: dist.Distribution = None, params2: dist.Distribution = None, drop_detail:bool = False, **kwargs) -> torch.Tensor:
-        assert params1, params2
+    def forward(self, params1: Distribution = None, params2: Distribution = None, drop_detail:bool = False, **kwargs) -> torch.Tensor:
+        assert params1 is not None, params2 is not None
         reduction = kwargs.get('reduction', self.reduction)
-        if isinstance(params1, dist.Distribution):
-            sample1 = params1.sample() if not params1.has_rsample else params1.rsample()
-        if isinstance(params2, dist.Distribution):
-            sample2 = params2.sample() if not params2.has_rsample else params2.rsample()
-        sample1 = sample1.view(-1, sample1.shape[-1])
-        sample2 = sample2.view(-1, sample2.shape[-1])
-        dim = sample1.shape[-1]
-
-        x_kernel = self.kernel(sample1, sample1) / (dim * (dim - 1))
-        y_kernel = self.kernel(sample2, sample2) / (dim * (dim - 1))
-        xy_kernel = self.kernel(sample1, sample2) / (dim * dim)
-        loss = self.reduce((x_kernel + y_kernel - 2*xy_kernel).sqrt(), reduction)
-
+        if isinstance(params1, Distribution):
+            params1 = params1.sample() if not params1.has_rsample else params1.rsample()
+        if isinstance(params2, Distribution):
+            params2 = params2.sample() if not params2.has_rsample else params2.rsample()
+        dim1 = params1.shape[-1]
+        dim2 = params2.shape[-1]
+        params1 = params1.view(-1, dim1)
+        params2 = params2.view(-1, dim2)
+        x_kernel = self.kernel(params1, params1, **self.kernel_args) / (dim1 * (dim1 - 1))
+        y_kernel = self.kernel(params2, params2, **self.kernel_args) / (dim2 * (dim2 - 1))
+        xy_kernel = self.kernel(params1, params2, **self.kernel_args) / (dim2 * dim1)
+        loss = x_kernel.sum() + y_kernel.sum() - 2*xy_kernel.sum()
         if drop_detail:
             return loss, {'mmd': loss.detach().cpu()}
         else:

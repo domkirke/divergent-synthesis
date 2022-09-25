@@ -108,7 +108,7 @@ class Model(pl.LightningModule):
             full_params = dict(model.named_parameters())
             full_params_names = list(full_params.keys())
             params = []
-            for param_regex in self.config.training.optim_params:
+            for param_regex in parameters:
                 valid_names = list(filter(lambda x: re.match(param_regex, x), full_params_names))
                 params.extend([full_params[k] for k in valid_names])
         return params

@@ -169,7 +169,7 @@ class DeconvEncoder(nn.Module):
         if sum([f % 1.0 for f in current_shape]) > 0:
             print('[Warning] final shape for DeconvEncoder module is non-integer')
         input_shape = (self.channels[0], *([math.ceil(i) for i in current_shape]))
-        final_shape = tuple(current_shape.tolist())
+        final_shape = tuple(current_shape.astype(np.int).tolist())
         if self.reshape_method == "flatten":
             assert self.target_shape is not None, "target_shape is required when reshape_method == flatten"
             assert self.input_shape, "flattening modules needs the input dimensionality."

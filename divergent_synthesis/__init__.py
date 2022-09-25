@@ -1,19 +1,24 @@
 import sys, os
-from omegaconf import OmegaConf
+from omegaconf import OmegaConf, ListConfig
 from . import utils
 from . import data
 from . import losses
 from . import modules
+from . import discriminators
+from . import generators
 from . import models
 from .monitor import callbacks
 
-def get_callbacks(config):
+
+def get_callbacks(config, rootdir="runs/"):
     if config is None:
         return []
     cks = []
     for callback in config:
         call_type = callback['type']
         call_args = callback.get("args", {})
+        if call_type == "ModelCheckpoint":
+            call_args['dirpath'] = rootdir
         cks.append(getattr(callbacks, call_type)(**call_args))
     return cks
 

@@ -25,21 +25,25 @@ data:
     batch_size: 64
 
 model:
-  type: GAN
+  type: ACGAN
   latent:
-    dim: 128
+    dim: 118
+  classes:
+    class:
+      mode: cat
+      dim: 10
   generator:
     type: ConvGenerator
     args:
       module: DeconvEncoder 
       dim: 2
-      channels: [32,32,32]
-      kernel_size: [9,9,9]
+      channels: [32, 32, 32]
       norm: instance
+      kernel_size: [9, 9, 9]
       stride: [2, 2, 2]
       out_nnlin: Tanh
   discriminator:
-    type: ConvDiscriminator
+    type: ConvAuxDiscriminator
     args:
       module: ConvEncoder
       dim: 2
@@ -48,14 +52,13 @@ model:
       kernel_size: [9,9,9]
       stride: [2, 2, 2]
   training:
-    mode: hinge 
+    mode: wasserstein
     balance: [1, 1]
     margin: 0.1
     invert: 0
     lr: [1.e-4, 1.e-4]
-    r1: 0.0
     # feature_matching: 10.0
-    # gp: 10.0
+    gp: 10.0
 
 pl_trainer:
   max_epochs: 10000
@@ -68,4 +71,3 @@ callbacks:
 - { type: ModelCheckpoint, args: {dirpath: "${hydra:run.dir}", filename: "${hydra:job.name}", every_n_epochs: 1, save_last: True}}
 - { type: DissectionMonitor, args: {monitor_epochs: 10, embedding_epochs: 10, n_batches: 3, batch_size: 512} }
 - { type: ImgReconstructionMonitor }
-
