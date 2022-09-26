@@ -101,11 +101,11 @@ if __name__ == "__main__":
     parser.add_argument('model', type=str, default="", help="path to model")
     parser.add_argument('-l', '--losses', type=str, default=['ld', 'mse', 'kld'], choices=valid_losses, nargs="*", help="losses to compute")
     parser.add_argument('-g', '--generate', type=int, default=0, help="number of generated examples (default: 0)")
-    parser.add_argument('-o', '--output', default="generations/", type=str)
+    parser.add_argument('-o', '--output', default="generations/", help="outputs directory", type=str)
     parser.add_argument('--classif_model', type=str, default=None, help="id for generative losses embeddings")
     parser.add_argument('--batch_size', type=int, default=256, help="batch size (default: 256)")
     parser.add_argument('--batches_max', default=None, type=int, help="maximum number of batches (default: none)")
-    parser.add_argument('--temperatures', default=[0.2, 0.5, 0.7, 1.0, 1.2, 1.5, 2.0, 3.0, 10.0], type=float, help="maximum number of batches (default: none)")
+    parser.add_argument('--temperatures', default=[0.2, 0.5, 0.7, 1.0, 1.2, 1.5, 2.0, 3.0, 10.0], type=float, help="temperatures used for latent sampling (only impacts generations)")
 
 
     args = parser.parse_args()

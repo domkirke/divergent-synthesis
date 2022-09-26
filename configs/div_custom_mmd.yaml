@@ -30,7 +30,7 @@ data:
     polarity: unipolar
   loader:
     shuffle: True
-    batch_size: 1024
+    batch_size: 2048
 
 model: 
   type: DivergentGenerative
@@ -38,12 +38,12 @@ model:
     path: /data/axel/neurips2022/vae_mnist/version_2/last.ckpt
   training:
     losses:
-      - {type: BAD, args: {model: /data/axel/neurips2022/mnist_classifier/version_4, splits: 1, weights: [-1.0, 20.0], couple: mmd, mode: sum, tasks: {'class': {'dim': 10}}}}
+      - {type: BAD, args: {model: /data/axel/neurips2022/mnist_classifier/version_4, splits: 1, weights: [-1.0, 30.0], couple: mmd, mode: sum, tasks: {'class': {'dim': 10}}}}
     optimizer:
       params: ["generator.decoder*"]
       type: Adam
       args:
-        lr: 1.e-4
+        lr: 1.e-5
 
 pl_trainer:
   max_epochs: 200
