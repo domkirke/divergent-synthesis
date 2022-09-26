@@ -20,7 +20,7 @@ callbacks:
 - { type: ModelSummary, args: {max_depth: 1} }
 - { type: ModelCheckpoint, args: {dirpath: "${hydra:run.dir}", filename: "${hydra:job.name}", every_n_epochs: 1, save_last: True, epoch_schedule: [0, 1, 2, 3, 5, 10, 15, 20, 25, 30, 35, 40, 50]} }
 - { type: DissectionMonitor, args: {monitor_epochs: 10, embedding_epochs: 10, n_batches: 5, batch_size: 512} }
-- { type: EvaluationCallback, args: {model_path: /data/axel/neurips2022/vae_mnist/version_2/last.ckpt, feature_path: /data/axel/neurips2022/mnist_classifier/version_1, n_batches: 2, batch_size: 64, logdir: "results/${hydra:job.name}"}}
+- { type: EvaluationCallback, args: {model_path: runs/neurips2022/vae_mnist/version_2/last.ckpt, feature_path: runs/neurips2022/mnist_classifier/version_1, n_batches: 2, batch_size: 64, logdir: "results/${hydra:job.name}"}}
 - { type: ImgReconstructionMonitor, args: {logdir: "results/${hydra:job.name}"}}
 
 data:
@@ -35,7 +35,7 @@ data:
 model: 
   type: DivergentGenerative
   generator:
-    path: /data/axel/neurips2022/vae_mnist/version_2/last.ckpt
+    path: runs/neurips2022/vae_mnist/version_2/last.ckpt
   training:
     losses:
       - {type: BAD, args: {model: inception_v3, splits: 1, weights: [-1.0, 5.0], couple: mmd, mode: sum, tasks: {'class': {'dim': 10}}}}

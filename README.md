@@ -13,6 +13,7 @@ $ git clone https://github.com/domkirke/divergent-synthesis.git
 $ cd divergent-synthesis
 $ pip install -r requirements.txt
 ```
+If you want to train divergent models using the VAE / classifier, download them using the link above, and place the folders `vae_mnist` and `mnist_classifier` in the `runs` subfolder.
 
 ### Training a model
 This repository uses the `hydra` package to manage configuration file. Once the training started, you can monitor using tensorboard within the results folder.
