@@ -2,7 +2,7 @@
 
 <img src="assets/extrap_v2.png"/>
 
-This repository contains the code for the *Creative divergent synthesis with generative models* paper, proposed @NeurIPS 2022 Workshop [Machine Learning for Creativity and Design](https://neuripscreativityworkshop.github.io/2022/). Every model used in this paper are available **here**, and full generations can be found **here**.
+This repository contains the code for the *Creative divergent synthesis with generative models* paper, proposed @NeurIPS 2022 Workshop [Machine Learning for Creativity and Design](https://neuripscreativityworkshop.github.io/2022/). Every model used in this paper are available [here](https://nubo.ircam.fr/index.php/s/LGpgA7tzfkyM997), and full generations / scores can be found [here](https://nubo.ircam.fr/index.php/s/zABcRj3sifXwTYr).
 
 ## How to run
 
